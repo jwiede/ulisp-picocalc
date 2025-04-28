@@ -1,5 +1,5 @@
-/* uLisp PicoCalc Release 4.7c - www.ulisp.com
-   David Johnson-Davies - www.technoblogy.com - 25th April 2025
+/* uLisp PicoCalc Release 4.7d - www.ulisp.com
+   David Johnson-Davies - www.technoblogy.com - 28th April 2025
 
    Licensed under the MIT license: https://opensource.org/licenses/MIT
 */
@@ -8038,13 +8038,10 @@ bool findsubstring (char *part, builtin_t name) {
 }
 
 void testescape () {
-  static uint16_t n;
+  static unsigned long n;
   if (millis()-n < 500) return;
   n = millis();
-  if (Serial.available()) {
-    char c = Serial.read();
-    if (c == '~') error2("escape!");
-  }
+  if (Serial.available() && Serial.read() == '~') error2("escape!");
   if (pc_kbd.keyCount() > 0) {
     const PCKeyboard::KeyEvent key = pc_kbd.keyEvent();
     if (key.state == PCKeyboard::StatePress) {
@@ -8705,6 +8702,56 @@ void initkybd () {
   pc_kbd.begin(0x1f,&Wire1);
 }
 
+int LastKeyword = 0; // For autocomplete
+
+/*
+  autoComplete - autocompletes the string in the line editor with the next symbol from the table of built-in symbols. 
+*/
+void autoComplete () {
+  static int bufIndex = 0, matchLen = 0, i = 0;
+  int gap = 0;
+  
+  // Only update what we're matching if we're not already looking through the buffer
+  if (LastKeyword == 0) { 
+    i = 0; // Reset the search
+    for (matchLen = 0; matchLen < 32; matchLen++) {
+      int bufLoc = WritePtr - matchLen;
+      if ((KybdBuf[bufLoc] == ' ') || (KybdBuf[bufLoc] == '(') || (KybdBuf[bufLoc] == '\n')) {
+        // Move past those characters because we're not matching on them
+        bufIndex = bufLoc + 1;
+        matchLen--;
+        break;
+      }
+      // Do this test here in case the first character in the buffer is one of the characters we test for
+      else if (bufLoc == 0) { 
+        bufIndex = bufLoc; 
+        break; 
+      } 
+    }
+  }
+
+  // Erase the previously shown keyword
+  for (int n=0; n<LastKeyword; n++) ProcessKey(8);
+
+  // Scan the table for keywords that start with the match buffer
+  int entries = tablesize(0) + tablesize(1);
+  while (true) {
+    bool n = i<tablesize(0);
+    const char *k = table(n?0:1)[n?i:i-tablesize(0)].string;
+    i = (i + 1) % entries; // Wrap
+    if (*k == KybdBuf[bufIndex]) {
+      if (strncmp(k, &KybdBuf[bufIndex], matchLen) == 0) {
+        // Skip the letters we're matching because they're already there
+        LastKeyword = strlen(k) - matchLen;
+        while (*(k + matchLen)) ProcessKey(*(k++ + matchLen));
+        return;
+      }
+    }
+    gap++; 
+    if (gap == entries) return; // No keywords with this letter
+  }
+}
+
 // Parenthesis highlighting
 void Highlight (int p, uint8_t invert) {
   if (p) {
@@ -8736,7 +8783,7 @@ void ProcessKey (char c) {
       Display(0x7F);
       if (WritePtr) c = KybdBuf[WritePtr-1];
     }
-  } else if (c == '\t') { // tab or ctrl-I
+  } else if (c == 209) { // shift-return
     for (int i = 0; i < LastWritePtr; i++) Display(KybdBuf[i]);
     WritePtr = LastWritePtr;
   } else if (WritePtr < KybdBufSize) {
@@ -8789,9 +8836,6 @@ void loadfromlibrary (object *env) {
   }
 }
 
-/*
-  gserial - gets a character from the serial port
-*/
 int gserial () {
   if (LastChar) {
     char temp = LastChar;
@@ -8812,8 +8856,9 @@ int gserial () {
         const PCKeyboard::KeyEvent key = pc_kbd.keyEvent();
         if (key.state == PCKeyboard::StatePress) {
           char temp = key.key;
-          if ((temp != 0) && (temp != 255) && (temp != 0xA1) && (temp != 0xA2) && (temp != 0xA3) && (temp != 0xA4) && (temp != 0xA5)) {
-            ProcessKey(temp);
+          if (temp == '\t') autoComplete();
+          else if ((temp != 0) && (temp != 255) && (temp != 0xA1) && (temp != 0xA2) && (temp != 0xA3) && (temp != 0xA4) && (temp != 0xA5)) {
+            ProcessKey(temp); LastKeyword = 0;
           }
         }
       }
@@ -8830,8 +8875,9 @@ int gserial () {
       const PCKeyboard::KeyEvent key = pc_kbd.keyEvent();
       if (key.state == PCKeyboard::StatePress) {
         char temp = key.key;
-        if ((temp != 0) && (temp != 255) && (temp != 0xA1) && (temp != 0xA2) && (temp != 0xA3) && (temp != 0xA4) && (temp != 0xA5)) {
-          ProcessKey(temp);
+        if (temp == '\t') autoComplete();
+        else if ((temp != 0) && (temp != 255) && (temp != 0xA1) && (temp != 0xA2) && (temp != 0xA3) && (temp != 0xA4) && (temp != 0xA5)) {
+          ProcessKey(temp); LastKeyword = 0;
         }
       }
     }
@@ -9047,7 +9093,7 @@ void setup () {
   initsleep();
   initgfx();
   initkybd();
-  pfstring(PSTR("uLisp 4.7c "), pserial); pln(pserial);
+  pfstring(PSTR("uLisp 4.7d "), pserial); pln(pserial);
 }
 
 // Read/Evaluate/Print loop
