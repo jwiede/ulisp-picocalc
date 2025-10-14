@@ -1,5 +1,5 @@
 /* uLisp PicoCalc Release 4.8f - www.ulisp.com
-   David Johnson-Davies - www.technoblogy.com - 13th October 2025
+   David Johnson-Davies - www.technoblogy.com - 14th October 2025
 
    Licensed under the MIT license: https://opensource.org/licenses/MIT
 */
@@ -71,7 +71,7 @@ TFT_eSPI tft = TFT_eSPI(320,320);
   #define CPU_RP2040
 
 #elif defined(ARDUINO_RASPBERRY_PI_PICO_W)
-  #define WORKSPACESIZE (15232-SDSIZE)    /* Objects (8*bytes) */
+  #define WORKSPACESIZE (15230-SDSIZE)    /* Objects (8*bytes) */
   #define CODESIZE 256                    /* Bytes */
   #define STACKDIFF 480
   #define CPU_RP2040
@@ -91,7 +91,7 @@ TFT_eSPI tft = TFT_eSPI(320,320);
 
 #elif defined(ARDUINO_RASPBERRY_PI_PICO_2W)
   #if defined(__riscv)
-  #define WORKSPACESIZE (34850-SDSIZE)    /* Objects (8*bytes) */
+  #define WORKSPACESIZE (34900-SDSIZE)    /* Objects (8*bytes) */
   #define STACKDIFF 580
   #else
   #define WORKSPACESIZE (39200-SDSIZE)    /* Objects (8*bytes) */
